@@ -76,6 +76,8 @@ const ROUNDS = [
   {
     n: 1,
     tag: "UNSORTED",
+    sIndex: -1,
+    duringTag: "NO SYSTEM",
     step: "NO SYSTEM",
     mood: 0,
     faceDown: true,
@@ -98,6 +100,8 @@ const ROUNDS = [
   {
     n: 2,
     tag: "SORT",
+    sIndex: 0,
+    duringTag: "VISIBLE ≠ ORGANIZED",
     step: "1S — SORT",
     mood: 1,
     faceDown: false,
@@ -118,6 +122,8 @@ const ROUNDS = [
   {
     n: 3,
     tag: "SET IN ORDER",
+    sIndex: 1,
+    duringTag: "COLOR = ZONE",
     step: "2S — SET IN ORDER",
     mood: 2,
     faceDown: false,
@@ -137,6 +143,8 @@ const ROUNDS = [
   {
     n: 4,
     tag: "SET IN ORDER",
+    sIndex: 1,
+    duringTag: "READ THE PLACARD",
     step: "2S — DEEPER",
     mood: 3,
     faceDown: false,
@@ -156,6 +164,8 @@ const ROUNDS = [
   {
     n: 5,
     tag: "STANDARDIZE",
+    sIndex: 3,
+    duringTag: "ONE WAY, EVERY TIME",
     step: "3S — STANDARDIZE",
     mood: 4,
     faceDown: false,
@@ -172,6 +182,14 @@ const ROUNDS = [
     parallel: "A kitchen line. Every pan, every knife, every squeeze bottle in the same spot on every shift. A cook reaches without looking.",
     waste: "Thirty minutes of searching becomes thirty seconds of retrieval.",
   },
+];
+
+const FIVE_S = [
+  { n: "1S", name: "SORT", jp: "SEIRI", line: "Get rid of what you don't need.", game: "Round 2" },
+  { n: "2S", name: "SET IN ORDER", jp: "SEITON", line: "A marked home for everything.", game: "Rounds 3–4" },
+  { n: "3S", name: "SHINE", jp: "SEISO", line: "Clean it so problems show up.", game: "Not in game" },
+  { n: "4S", name: "STANDARDIZE", jp: "SEIKETSU", line: "One way, every shift.", game: "Round 5" },
+  { n: "5S", name: "SUSTAIN", jp: "SHITSUKE", line: "Keep it that way.", game: "Not in game" },
 ];
 
 const MOOD_CAPTION = ["WHERE IS IT", "STILL WALKING", "HUH. FASTER.", "NOW WE'RE MOVING", "THAT'S THE JOB"];
@@ -337,6 +355,25 @@ function Supervisor({ mood, size = 132 }) {
   );
 }
 
+function FiveSStrip({ active = -1, done = [] }) {
+  return (
+    <div className="s-strip">
+      {FIVE_S.map((s, i) => {
+        const state = i === active ? "now" : done.includes(i) ? "done" : "todo";
+        return (
+          <div className={`s-cell s-${state}`} key={s.n}>
+            <div className="s-num">{s.n}</div>
+            <div className="s-name">{s.name}</div>
+            <div className="s-jp">{s.jp}</div>
+            <div className="s-line">{s.line}</div>
+            <div className="s-game">{s.game}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Logo({ size = 44 }) {
   if (LOGO_SRC) return <img src={LOGO_SRC} alt="Andersen Continuous Improvement" style={{ height: size, width: "auto", display: "block" }} />;
   return (
@@ -405,7 +442,8 @@ const Card = memo(function Card({ card, faceDown, revealed, status, onPick, disa
 
 /* ---------------- app ---------------- */
 export default function FiveSCardGame() {
-  const [phase, setPhase] = useState("intro"); // intro | coach | play | reveal | debrief | final
+  const [phase, setPhase] = useState("intro"); // intro | tutorial | play | reveal | debrief | final
+  const [tutDragged, setTutDragged] = useState(false);
   const [roundIdx, setRoundIdx] = useState(0);
   const [groups, setGroups] = useState([]);
   const [positions, setPositions] = useState(null);
@@ -493,7 +531,8 @@ export default function FiveSCardGame() {
     reshuffled.current = false;
     clearPending();
     setRoundIdx(idx);
-    setPhase(idx === 0 ? "coach" : "play");
+    setTutDragged(false);
+    setPhase(idx === 0 ? "tutorial" : "play");
     setShowHint(idx !== 0 && (cfg.floorW > 1 || cfg.floorH > 1));
   }, []);
 
@@ -569,7 +608,7 @@ export default function FiveSCardGame() {
 
   /* panning */
   const onPointerDown = (e) => {
-    if (!pannable || phase !== "play") return;
+    if (!pannable || (phase !== "play" && phase !== "tutorial")) return;
     dragRef.current = { sx: e.clientX, sy: e.clientY, ox: offRef.current.x, oy: offRef.current.y, lx: e.clientX, ly: e.clientY };
     movedRef.current = false;
   };
@@ -581,6 +620,7 @@ export default function FiveSCardGame() {
     if (Math.abs(dx) > 9 || Math.abs(dy) > 9) {
       movedRef.current = true;
       setShowHint(false);
+      if (phase === "tutorial") setTutDragged(true);
     }
     const moved = Math.abs(e.clientX - d.lx) + Math.abs(e.clientY - d.ly);
     d.lx = e.clientX;
@@ -595,12 +635,13 @@ export default function FiveSCardGame() {
   const nudge = (dx, dy) => {
     if (!pannable) return;
     setShowHint(false);
+    if (phase === "tutorial") setTutDragged(true);
     setSteps((s) => s + (Math.abs(dx) + Math.abs(dy)) / PX_PER_STEP);
     setOffset((o) => clamp(o.x + dx, o.y + dy));
   };
 
   const onKeyDown = (e) => {
-    if (phase !== "play" || !pannable) return;
+    if ((phase !== "play" && phase !== "tutorial") || !pannable) return;
     const d = 140;
     if (e.key === "ArrowLeft") nudge(d, 0);
     else if (e.key === "ArrowRight") nudge(-d, 0);
@@ -685,6 +726,27 @@ export default function FiveSCardGame() {
       border:3px solid ${BONE};box-shadow:5px 5px 0 #000;padding:13px 22px;cursor:pointer;width:100%}
     .btn:hover{transform:translate(2px,2px);box-shadow:3px 3px 0 #000}
     .btn:active{transform:translate(5px,5px);box-shadow:0 0 0 #000}
+    .btn:disabled{cursor:not-allowed}
+    .btn:disabled:hover{transform:none;box-shadow:5px 5px 0 #000}
+    .tut-banner{background:${PANEL};border:3px solid ${AMBER};color:${BONE};text-align:center;
+      font-family:${HEAVY};font-size:clamp(14px,4vw,20px);letter-spacing:.06em;padding:12px;margin-bottom:10px}
+    .tut-word{color:${AMBER};font-size:1.35em;margin-right:8px;display:inline-block;animation:pulseword 1s infinite}
+    @keyframes pulseword{0%,100%{opacity:1}50%{opacity:.45}}
+    .s-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+    @media (max-width:620px){.s-strip{grid-template-columns:repeat(2,1fr)}}
+    .s-cell{border:3px solid ${STEEL};background:#0C0A09;padding:8px 7px;min-height:104px}
+    .s-num{font-family:${HEAVY};font-size:16px;line-height:1;color:${STEEL}}
+    .s-name{font-family:${HEAVY};font-size:11px;letter-spacing:.04em;margin-top:3px;line-height:1.15}
+    .s-jp{font-size:8px;letter-spacing:.18em;color:${STEEL};margin-top:2px}
+    .s-line{font-size:10px;line-height:1.4;color:#DAD5CC;margin-top:6px}
+    .s-game{font-size:8px;letter-spacing:.12em;color:${STEEL};margin-top:6px}
+    .s-now{border-color:${AMBER};background:rgba(232,179,58,.1)}
+    .s-now .s-num,.s-now .s-name{color:${AMBER}}
+    .s-done{border-color:${RED}}
+    .s-done .s-num{color:${RED}}
+    .s-todo{opacity:.55}
+    .tag-chip{display:inline-block;background:${AMBER};color:${INK};font-family:${HEAVY};font-size:11px;
+      letter-spacing:.1em;padding:4px 10px;margin-bottom:8px}
     .btn-ghost{background:transparent;color:${BONE}}
     .hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
     .hud-box{flex:1 1 78px;background:${PANEL};border:3px solid ${BONE};padding:7px 8px;text-align:center}
@@ -818,31 +880,20 @@ export default function FiveSCardGame() {
         <div className="wrap">
           <Header />
           <div className="panel">
-            <div className="eyebrow">Five rounds · Thirty seconds each</div>
+            <div className="eyebrow">Five rounds · 30 seconds each</div>
             <h1>
               Find the part.<br />
               <em>Walk the floor.</em>
             </h1>
+            <p>Same deck every round. The floor gets more organized. You get faster.</p>
             <p>
-              Each round names one card and drops you on a plant floor. The floor is bigger than your screen — drag to
-              walk it. Find the card before the clock runs out.
-            </p>
-            <p>
-              <span className="kicker">The clock runs 60 to 1.</span> One second here is one minute out there. Burn 22
-              seconds and you just spent 22 minutes looking for a part while the truck waits.
+              <span className="kicker">Clock runs 60:1.</span> One second here = one minute on the job.
             </p>
           </div>
           <div className="split">
             <div className="panel panel-quiet">
               <h2>What changes</h2>
-              <p>
-                The deck never changes. Fifty-four cards, start to finish. What changes is how the floor is organized —
-                and how much of it you have to cover to find one thing.
-              </p>
-              <p>
-                Round 1 is six unmarked aisles. By Round 5 it all fits on one screen, sorted, and you reach straight for
-                it without walking at all.
-              </p>
+              <p>Round 1: six unmarked aisles. Round 5: one screen, sorted, no walking.</p>
             </div>
             <div className="panel panel-quiet">
               <div className="sup" style={{ border: "none", padding: 0, background: "transparent" }}>
@@ -852,7 +903,7 @@ export default function FiveSCardGame() {
                   <div className="sup-role">SHOP SUPERVISOR</div>
                 </div>
               </div>
-              <p style={{ marginTop: 12 }}>He's watching the clock too. He gets happier as the floor gets better.</p>
+              <p style={{ marginTop: 12 }}>Gets happier as the floor gets better.</p>
             </div>
           </div>
           <button className="btn" onClick={() => startRound(0)}>
@@ -863,47 +914,10 @@ export default function FiveSCardGame() {
     );
   }
 
-  /* ---------- coach card (round 1 only, clock held) ---------- */
-  if (phase === "coach") {
-    return (
-      <div className="aci-root">
-        <style>{styles}</style>
-        <div className="wrap">
-          <Header />
-          <div className="panel">
-            <div className="eyebrow">Before the clock starts</div>
-            <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
-              <Walker size={54} />
-              <h1 style={{ fontSize: "clamp(20px,6vw,34px)", margin: 0 }}>
-                Drag to walk<br />
-                <em>the floor.</em>
-              </h1>
-            </div>
-            <p>
-              The plant is <b>three screens wide and two deep</b>. What you see when the round opens is one corner of it
-              — the card you're looking for is probably not on it.
-            </p>
-            <p>
-              Drag anywhere on the floor to walk. Arrow keys and the pad in the bottom-left do the same thing. The
-              minimap in the top-right corner shows where you are in the building.
-            </p>
-            <p>
-              Click a card to pick it up and read it. <b>That takes time</b> — same as it does when you're holding a tote
-              in your hands. Every pickup and every step is counted.
-            </p>
-            <p style={{ color: AMBER }}>Thirty seconds on the clock. Sixty to one. Go find it.</p>
-          </div>
-          <button className="btn" onClick={() => setPhase("play")}>
-            Start the clock
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  /* ---------- play + reveal ---------- */
-  if (phase === "play" || phase === "reveal") {
+  /* ---------- play + reveal + tutorial (same floor, tutorial pauses the clock) ---------- */
+  if (phase === "play" || phase === "reveal" || phase === "tutorial") {
     const low = timeLeft <= 8;
+    const inTutorial = phase === "tutorial";
     const zones = round.mode === "zones" ? ZONE_LAYOUTS[round.n](groups) : null;
     const canL = offset.x < -2;
     const canR = offset.x > vp.w - floorW + 2;
@@ -926,34 +940,42 @@ export default function FiveSCardGame() {
             </div>
           </div>
 
-          <div className="hud">
-            <div className="hud-box">
-              <div className="hud-label">TIME LEFT</div>
-              <div className={`hud-val ${low ? "timer-low" : ""}`}>{timeLeft.toFixed(1)}</div>
+          {inTutorial ? (
+            <div className="tut-banner">
+              <span className="tut-word">DRAG</span> TO WALK THE FLOOR
             </div>
-            <div className="hud-box">
-              <div className="hud-label">STEPS WALKED</div>
-              <div className="hud-val">{Math.round(steps)}</div>
-            </div>
-            <div className="hud-box">
-              <div className="hud-label">HANDLED</div>
-              <div className="hud-val">{stats.handled}</div>
-            </div>
-            <div className="hud-box">
-              <div className="hud-label">FLOOR TIME</div>
-              <div className="hud-val">{Math.round(ROUND_TIME - timeLeft)}m</div>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="hud">
+                <div className="hud-box">
+                  <div className="hud-label">TIME LEFT</div>
+                  <div className={`hud-val ${low ? "timer-low" : ""}`}>{timeLeft.toFixed(1)}</div>
+                </div>
+                <div className="hud-box">
+                  <div className="hud-label">STEPS WALKED</div>
+                  <div className="hud-val">{Math.round(steps)}</div>
+                </div>
+                <div className="hud-box">
+                  <div className="hud-label">HANDLED</div>
+                  <div className="hud-val">{stats.handled}</div>
+                </div>
+                <div className="hud-box">
+                  <div className="hud-label">FLOOR TIME</div>
+                  <div className="hud-val">{Math.round(ROUND_TIME - timeLeft)}m</div>
+                </div>
+              </div>
 
-          <div className="target">
-            <div className="target-lbl">WORK ORDER — PULL THIS ONE</div>
-            <div className="target-val" style={{ color: target.red ? RED : INK }}>
-              {target.joker ? "JOKER" : `${target.rank}${target.sym}`}
-            </div>
-          </div>
+              <div className="target">
+                <div className="target-lbl">WORK ORDER — PULL THIS ONE</div>
+                <div className="target-val" style={{ color: target.red ? RED : INK }}>
+                  {target.joker ? "JOKER" : `${target.rank}${target.sym}`}
+                </div>
+              </div>
 
-          <p style={{ color: AMBER, fontSize: 12, marginBottom: 6 }}>{round.during}</p>
-          <div className="handling">{locked && phase === "play" ? "HANDLING — READING IT, SETTING IT BACK DOWN" : ""}</div>
+              <div className="tag-chip">{round.duringTag}</div>
+              <div className="handling">{locked && phase === "play" ? "HANDLING — SETTING IT BACK DOWN" : ""}</div>
+            </>
+          )}
 
           <div
             className={`stage ${pannable ? "" : "fixed"}`}
@@ -1017,7 +1039,7 @@ export default function FiveSCardGame() {
               ))}
             </div>
 
-            {pannable && phase === "play" && (
+            {pannable && (phase === "play" || inTutorial) && (
               <>
                 {canL && <div className="edge" style={{ left: 6, top: "48%" }}>{"\u25C0"}</div>}
                 {canR && <div className="edge" style={{ right: 6, top: "48%" }}>{"\u25B6"}</div>}
@@ -1051,6 +1073,20 @@ export default function FiveSCardGame() {
 
             {banner && <div className="banner">{banner}</div>}
           </div>
+
+          {inTutorial && (
+            <button
+              className="btn"
+              style={{ marginTop: 12, opacity: tutDragged ? 1 : 0.4 }}
+              disabled={!tutDragged}
+              onClick={() => {
+                setSteps(0);
+                setPhase("play");
+              }}
+            >
+              {tutDragged ? "Start the clock" : "Drag the floor first"}
+            </button>
+          )}
         </div>
 
         {phase === "reveal" && (
@@ -1139,6 +1175,17 @@ export default function FiveSCardGame() {
                   {improvement > 0 ? `${improvement}% faster` : `${Math.abs(improvement)}% slower`}
                 </b>
               </div>
+            )}
+          </div>
+
+          <div className="panel panel-quiet">
+            <h2>Where you are in 5S</h2>
+            <FiveSStrip
+              active={round.sIndex}
+              done={ROUNDS.slice(0, roundIdx).map((r) => r.sIndex).filter((i) => i >= 0 && i !== round.sIndex)}
+            />
+            {round.sIndex < 0 && (
+              <p style={{ marginTop: 10, color: STEEL }}>Round 1 is the before picture — no S applied yet.</p>
             )}
           </div>
 
@@ -1279,7 +1326,9 @@ export default function FiveSCardGame() {
               <div className="sup-role">SHOP SUPERVISOR</div>
             </div>
           </div>
-          <h2>Shine and sustain</h2>
+          <h2>All five</h2>
+          <FiveSStrip active={-1} done={[0, 1, 2, 3, 4]} />
+          <h2 style={{ marginTop: 18 }}>Shine and sustain</h2>
           <p>
             Two S's never showed up on the board, because a five-minute game can't fake either one. <b>Shine</b> is what
             keeps a layout readable — a clean bay shows you what's missing before you go looking for it.{" "}
