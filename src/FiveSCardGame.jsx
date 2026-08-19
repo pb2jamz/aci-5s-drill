@@ -524,7 +524,8 @@ export default function FiveSCardGame() {
     const pool = g.flatMap((x) => x.cards);
     setGroups(g);
     setPositions(cfg.mode === "scatter" ? scatterLayout(pool, cfg.scatterCols, cfg.scatterRows) : null);
-    setTarget(pool[Math.floor(Math.random() * pool.length)]);
+    const pullable = pool.filter((c) => !c.joker);
+    setTarget(pullable[Math.floor(Math.random() * pullable.length)]);
     setRevealed({});
     setTimeLeft(ROUND_TIME);
     setLocked(false);
@@ -746,6 +747,15 @@ export default function FiveSCardGame() {
     .s-done{border-color:${RED}}
     .s-done .s-num{color:${RED}}
     .s-todo{opacity:.55}
+    .joker-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+    .joker-card{position:relative;width:54px;aspect-ratio:2/2.9;background:${BONE};border:3px solid ${INK};
+      border-radius:3px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;opacity:.55}
+    .joker-card span{font-size:24px;color:${STEEL}}
+    .joker-x{position:absolute;inset:0;background:
+      linear-gradient(to bottom right,transparent calc(50% - 2px),${RED} calc(50% - 2px),${RED} calc(50% + 2px),transparent calc(50% + 2px)),
+      linear-gradient(to bottom left,transparent calc(50% - 2px),${RED} calc(50% - 2px),${RED} calc(50% + 2px),transparent calc(50% + 2px))}
+    .joker-txt{flex:1 1 220px;min-width:0}
+    .joker-txt p{margin-bottom:8px}
     .how-grid{display:flex;flex-direction:column;gap:8px}
     .how-cell{display:flex;gap:10px;align-items:flex-start;border-left:4px solid ${AMBER};padding:4px 0 4px 10px}
     .how-num{font-family:${HEAVY};font-size:20px;color:${AMBER};line-height:1;min-width:18px}
@@ -1202,6 +1212,36 @@ export default function FiveSCardGame() {
               <p style={{ marginTop: 10, color: STEEL }}>Round 1 is the before picture — no S applied yet.</p>
             )}
           </div>
+
+          {round.n === 2 && (
+            <div className="panel">
+              <h2>Two cards just left the building</h2>
+              <div className="joker-row">
+                <div className="joker-card">
+                  <span>★</span>
+                  <div className="joker-x" />
+                </div>
+                <div className="joker-card">
+                  <span>★</span>
+                  <div className="joker-x" />
+                </div>
+                <div className="joker-txt">
+                  <p>
+                    <b>Two jokers were in that deck the whole time.</b> They're not parts. No work order can ever call
+                    for one. They sat in the aisles taking up space and making every search bigger.
+                  </p>
+                  <p style={{ color: AMBER, marginBottom: 0 }}>
+                    Sort found them. Next round the deck is 52 — you search 4% less floor without moving a rack or
+                    spending a dollar.
+                  </p>
+                </div>
+              </div>
+              <p style={{ marginTop: 12, color: STEEL, marginBottom: 0 }}>
+                That's <b>Inventory waste</b>: stuff you're storing, walking around and looking past that nobody will
+                ever pull. Every shop has jokers. They just don't have stars on them.
+              </p>
+            </div>
+          )}
 
           {round.n === 1 && (
             <div className="panel">
