@@ -442,8 +442,7 @@ const Card = memo(function Card({ card, faceDown, revealed, status, onPick, disa
 
 /* ---------------- app ---------------- */
 export default function FiveSCardGame() {
-  const [phase, setPhase] = useState("intro"); // intro | tutorial | play | reveal | debrief | final
-  const [tutDragged, setTutDragged] = useState(false);
+  const [phase, setPhase] = useState("intro"); // intro | play | reveal | debrief | final
   const [roundIdx, setRoundIdx] = useState(0);
   const [groups, setGroups] = useState([]);
   const [positions, setPositions] = useState(null);
@@ -480,6 +479,15 @@ export default function FiveSCardGame() {
   useEffect(() => {
     offRef.current = offset;
   }, [offset]);
+
+  /* every new screen starts at the top */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo(0, 0);
+    if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [phase, roundIdx]);
 
   /* measure viewport */
   useEffect(() => {
@@ -531,8 +539,7 @@ export default function FiveSCardGame() {
     reshuffled.current = false;
     clearPending();
     setRoundIdx(idx);
-    setTutDragged(false);
-    setPhase(idx === 0 ? "tutorial" : "play");
+    setPhase("play");
     setShowHint(idx !== 0 && (cfg.floorW > 1 || cfg.floorH > 1));
   }, []);
 
@@ -608,7 +615,7 @@ export default function FiveSCardGame() {
 
   /* panning */
   const onPointerDown = (e) => {
-    if (!pannable || (phase !== "play" && phase !== "tutorial")) return;
+    if (!pannable || phase !== "play") return;
     dragRef.current = { sx: e.clientX, sy: e.clientY, ox: offRef.current.x, oy: offRef.current.y, lx: e.clientX, ly: e.clientY };
     movedRef.current = false;
   };
@@ -620,7 +627,6 @@ export default function FiveSCardGame() {
     if (Math.abs(dx) > 9 || Math.abs(dy) > 9) {
       movedRef.current = true;
       setShowHint(false);
-      if (phase === "tutorial") setTutDragged(true);
     }
     const moved = Math.abs(e.clientX - d.lx) + Math.abs(e.clientY - d.ly);
     d.lx = e.clientX;
@@ -635,13 +641,12 @@ export default function FiveSCardGame() {
   const nudge = (dx, dy) => {
     if (!pannable) return;
     setShowHint(false);
-    if (phase === "tutorial") setTutDragged(true);
     setSteps((s) => s + (Math.abs(dx) + Math.abs(dy)) / PX_PER_STEP);
     setOffset((o) => clamp(o.x + dx, o.y + dy));
   };
 
   const onKeyDown = (e) => {
-    if ((phase !== "play" && phase !== "tutorial") || !pannable) return;
+    if (phase !== "play" || !pannable) return;
     const d = 140;
     if (e.key === "ArrowLeft") nudge(d, 0);
     else if (e.key === "ArrowRight") nudge(-d, 0);
@@ -728,10 +733,6 @@ export default function FiveSCardGame() {
     .btn:active{transform:translate(5px,5px);box-shadow:0 0 0 #000}
     .btn:disabled{cursor:not-allowed}
     .btn:disabled:hover{transform:none;box-shadow:5px 5px 0 #000}
-    .tut-banner{background:${PANEL};border:3px solid ${AMBER};color:${BONE};text-align:center;
-      font-family:${HEAVY};font-size:clamp(14px,4vw,20px);letter-spacing:.06em;padding:12px;margin-bottom:10px}
-    .tut-word{color:${AMBER};font-size:1.35em;margin-right:8px;display:inline-block;animation:pulseword 1s infinite}
-    @keyframes pulseword{0%,100%{opacity:1}50%{opacity:.45}}
     .s-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
     @media (max-width:620px){.s-strip{grid-template-columns:repeat(2,1fr)}}
     .s-cell{border:3px solid ${STEEL};background:#0C0A09;padding:8px 7px;min-height:104px}
@@ -745,6 +746,11 @@ export default function FiveSCardGame() {
     .s-done{border-color:${RED}}
     .s-done .s-num{color:${RED}}
     .s-todo{opacity:.55}
+    .how-grid{display:flex;flex-direction:column;gap:8px}
+    .how-cell{display:flex;gap:10px;align-items:flex-start;border-left:4px solid ${AMBER};padding:4px 0 4px 10px}
+    .how-num{font-family:${HEAVY};font-size:20px;color:${AMBER};line-height:1;min-width:18px}
+    .how-txt{font-size:13px;line-height:1.5;color:#DAD5CC}
+    .how-txt b{color:${BONE}}
     .tag-chip{display:inline-block;background:${AMBER};color:${INK};font-family:${HEAVY};font-size:11px;
       letter-spacing:.1em;padding:4px 10px;margin-bottom:8px}
     .btn-ghost{background:transparent;color:${BONE}}
@@ -883,29 +889,60 @@ export default function FiveSCardGame() {
             <div className="eyebrow">Five rounds · 30 seconds each</div>
             <h1>
               Find the part.<br />
-              <em>Walk the floor.</em>
+              <em>Beat the clock.</em>
             </h1>
-            <p>Same deck every round. The floor gets more organized. You get faster.</p>
             <p>
-              <span className="kicker">Clock runs 60:1.</span> One second here = one minute on the job.
+              <b>A deck of 54 playing cards is dumped across a plant floor.</b> Those cards are your parts, tools and
+              totes — every item somebody has to go find to do their job.
+            </p>
+            <p>
+              You get a work order: <b>one card to bring back</b>. Find it before the clock hits zero.
+            </p>
+            <p>
+              <span className="kicker">Clock runs 60:1.</span> One second here = one minute out there.
             </p>
           </div>
-          <div className="split">
-            <div className="panel panel-quiet">
-              <h2>What changes</h2>
-              <p>Round 1: six unmarked aisles. Round 5: one screen, sorted, no walking.</p>
-            </div>
-            <div className="panel panel-quiet">
-              <div className="sup" style={{ border: "none", padding: 0, background: "transparent" }}>
-                <Supervisor mood={0} size={112} />
-                <div>
-                  <div className="sup-cap">{MOOD_CAPTION[0]}</div>
-                  <div className="sup-role">SHOP SUPERVISOR</div>
+
+          <div className="panel panel-quiet">
+            <h2>How to play</h2>
+            <div className="how-grid">
+              <div className="how-cell">
+                <div className="how-num">1</div>
+                <div className="how-txt">
+                  <b>DRAG</b> the floor to walk around it. It's bigger than your screen.
                 </div>
               </div>
-              <p style={{ marginTop: 12 }}>Gets happier as the floor gets better.</p>
+              <div className="how-cell">
+                <div className="how-num">2</div>
+                <div className="how-txt">
+                  <b>TAP</b> a card to pick it up and read it. Takes time, same as real life.
+                </div>
+              </div>
+              <div className="how-cell">
+                <div className="how-num">3</div>
+                <div className="how-txt">
+                  <b>MATCH</b> the work order card at the top of the screen.
+                </div>
+              </div>
             </div>
           </div>
+
+          <div className="panel panel-quiet">
+            <h2>The point</h2>
+            <p>
+              <b>The deck never changes. How it's organized does.</b> Round 1 it's face-down in six unmarked aisles.
+              Round 5 it's sorted by suit and rank on one screen.
+            </p>
+            <p>Same 54 cards, same job, every round. Watch what happens to your time.</p>
+            <div className="sup" style={{ marginTop: 12 }}>
+              <Supervisor mood={0} size={64} />
+              <div>
+                <div className="sup-cap">{MOOD_CAPTION[0]}</div>
+                <div className="sup-role">HE GETS HAPPIER AS THE FLOOR GETS BETTER</div>
+              </div>
+            </div>
+          </div>
+
           <button className="btn" onClick={() => startRound(0)}>
             Clock in
           </button>
@@ -915,9 +952,8 @@ export default function FiveSCardGame() {
   }
 
   /* ---------- play + reveal + tutorial (same floor, tutorial pauses the clock) ---------- */
-  if (phase === "play" || phase === "reveal" || phase === "tutorial") {
+  if (phase === "play" || phase === "reveal") {
     const low = timeLeft <= 8;
-    const inTutorial = phase === "tutorial";
     const zones = round.mode === "zones" ? ZONE_LAYOUTS[round.n](groups) : null;
     const canL = offset.x < -2;
     const canR = offset.x > vp.w - floorW + 2;
@@ -940,42 +976,34 @@ export default function FiveSCardGame() {
             </div>
           </div>
 
-          {inTutorial ? (
-            <div className="tut-banner">
-              <span className="tut-word">DRAG</span> TO WALK THE FLOOR
+          <div className="hud">
+            <div className="hud-box">
+              <div className="hud-label">TIME LEFT</div>
+              <div className={`hud-val ${low ? "timer-low" : ""}`}>{timeLeft.toFixed(1)}</div>
             </div>
-          ) : (
-            <>
-              <div className="hud">
-                <div className="hud-box">
-                  <div className="hud-label">TIME LEFT</div>
-                  <div className={`hud-val ${low ? "timer-low" : ""}`}>{timeLeft.toFixed(1)}</div>
-                </div>
-                <div className="hud-box">
-                  <div className="hud-label">STEPS WALKED</div>
-                  <div className="hud-val">{Math.round(steps)}</div>
-                </div>
-                <div className="hud-box">
-                  <div className="hud-label">HANDLED</div>
-                  <div className="hud-val">{stats.handled}</div>
-                </div>
-                <div className="hud-box">
-                  <div className="hud-label">FLOOR TIME</div>
-                  <div className="hud-val">{Math.round(ROUND_TIME - timeLeft)}m</div>
-                </div>
-              </div>
+            <div className="hud-box">
+              <div className="hud-label">STEPS WALKED</div>
+              <div className="hud-val">{Math.round(steps)}</div>
+            </div>
+            <div className="hud-box">
+              <div className="hud-label">HANDLED</div>
+              <div className="hud-val">{stats.handled}</div>
+            </div>
+            <div className="hud-box">
+              <div className="hud-label">FLOOR TIME</div>
+              <div className="hud-val">{Math.round(ROUND_TIME - timeLeft)}m</div>
+            </div>
+          </div>
 
-              <div className="target">
-                <div className="target-lbl">WORK ORDER — PULL THIS ONE</div>
-                <div className="target-val" style={{ color: target.red ? RED : INK }}>
-                  {target.joker ? "JOKER" : `${target.rank}${target.sym}`}
-                </div>
-              </div>
+          <div className="target">
+            <div className="target-lbl">WORK ORDER — PULL THIS ONE</div>
+            <div className="target-val" style={{ color: target.red ? RED : INK }}>
+              {target.joker ? "JOKER" : `${target.rank}${target.sym}`}
+            </div>
+          </div>
 
-              <div className="tag-chip">{round.duringTag}</div>
-              <div className="handling">{locked && phase === "play" ? "HANDLING — SETTING IT BACK DOWN" : ""}</div>
-            </>
-          )}
+          <div className="tag-chip">{round.duringTag}</div>
+          <div className="handling">{locked && phase === "play" ? "HANDLING — SETTING IT BACK DOWN" : ""}</div>
 
           <div
             className={`stage ${pannable ? "" : "fixed"}`}
@@ -1039,7 +1067,7 @@ export default function FiveSCardGame() {
               ))}
             </div>
 
-            {pannable && (phase === "play" || inTutorial) && (
+            {pannable && phase === "play" && (
               <>
                 {canL && <div className="edge" style={{ left: 6, top: "48%" }}>{"\u25C0"}</div>}
                 {canR && <div className="edge" style={{ right: 6, top: "48%" }}>{"\u25B6"}</div>}
@@ -1073,20 +1101,6 @@ export default function FiveSCardGame() {
 
             {banner && <div className="banner">{banner}</div>}
           </div>
-
-          {inTutorial && (
-            <button
-              className="btn"
-              style={{ marginTop: 12, opacity: tutDragged ? 1 : 0.4 }}
-              disabled={!tutDragged}
-              onClick={() => {
-                setSteps(0);
-                setPhase("play");
-              }}
-            >
-              {tutDragged ? "Start the clock" : "Drag the floor first"}
-            </button>
-          )}
         </div>
 
         {phase === "reveal" && (
