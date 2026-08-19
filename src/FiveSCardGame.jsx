@@ -132,6 +132,7 @@ const ROUNDS = [
     floorH: 1,
     cardW: 5.6,
     cols: 9,
+    targetZoneIndex: 1,
     handleMs: 140,
     headline: "Jokers gone. Two taped zones: red and black.",
     during: "The target's color tells you which zone. Walk to that one only.",
@@ -149,10 +150,11 @@ const ROUNDS = [
     mood: 3,
     faceDown: false,
     mode: "zones",
-    floorW: 1.3,
-    floorH: 1,
+    floorW: 1,
+    floorH: 1.45,
     cardW: 6.2,
-    cols: 7,
+    cols: 5,
+    targetZoneIndex: 2,
     handleMs: 120,
     headline: "Four bays. Four suits. Placards on every one.",
     during: "Four bays, thirteen cards each. Read the placard, walk once.",
@@ -174,6 +176,7 @@ const ROUNDS = [
     floorH: 1,
     cardW: 6.4,
     cols: 13,
+    targetZoneIndex: 0,
     handleMs: 100,
     headline: "One board. Suit, then rank, A through K.",
     during: "You know where it is before you look.",
@@ -213,11 +216,12 @@ function buildGroups(n) {
   if (n <= 2) return [{ label: null, cards: shuffle(buildDeck(true)) }];
   const d = buildDeck(false);
   if (n === 3)
-    return [
+    return shuffle([
       { label: "RED ZONE", cards: shuffle(d.filter((c) => c.red)) },
       { label: "BLACK ZONE", cards: shuffle(d.filter((c) => !c.red)) },
-    ];
-  if (n === 4) return SUITS.map((s) => ({ label: `BAY ${s.k} — ${s.name}`, cards: shuffle(d.filter((c) => c.suit === s.k)) }));
+    ]);
+  if (n === 4)
+    return shuffle(SUITS.map((s) => ({ label: `BAY ${s.k} — ${s.name}`, cards: shuffle(d.filter((c) => c.suit === s.k)) })));
   return SUITS.map((s) => ({ label: `${s.name} — A THROUGH K`, cards: d.filter((c) => c.suit === s.k).sort((a, b) => a.order - b.order) }));
 }
 
@@ -523,8 +527,19 @@ export default function FiveSCardGame() {
     const g = buildGroups(cfg.n);
     const pool = g.flatMap((x) => x.cards);
     setGroups(g);
-    setPositions(cfg.mode === "scatter" ? scatterLayout(pool, cfg.scatterCols, cfg.scatterRows) : null);
-    const pullable = pool.filter((c) => !c.joker);
+    const positionsForRound = cfg.mode === "scatter" ? scatterLayout(pool, cfg.scatterCols, cfg.scatterRows) : null;
+    setPositions(positionsForRound);
+    // the work order always sits at the far end of whatever floor you're on
+    let pullable = pool.filter((c) => !c.joker);
+    const scatterPos = cfg.mode === "scatter" ? positionsForRound : null;
+    if (scatterPos) {
+      // far corner of a 3-wide, 2-deep floor: forces a full crossing
+      const far = pullable.filter((c) => scatterPos[c.id] && scatterPos[c.id].left > 58 && scatterPos[c.id].top > 50);
+      if (far.length) pullable = far;
+    } else if (cfg.targetZoneIndex != null) {
+      const zoneCards = (g[cfg.targetZoneIndex]?.cards || []).filter((c) => !c.joker);
+      if (zoneCards.length) pullable = zoneCards;
+    }
     setTarget(pullable[Math.floor(Math.random() * pullable.length)]);
     setRevealed({});
     setTimeLeft(ROUND_TIME);
