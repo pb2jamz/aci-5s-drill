@@ -64,7 +64,7 @@ function scatterLayout(cards, cols, rows) {
     pos[c.id] = {
       left: Math.max(1, Math.min(94, col * colStep + 2 + (Math.random() - 0.5) * colStep * 0.75)),
       top: Math.max(1, Math.min(92, row * rowStep + 3 + (Math.random() - 0.5) * rowStep * 0.7)),
-      rot: (Math.random() - 0.5) * 30,
+      rot: (Math.random() - 0.5) * 10,
       z: Math.floor(Math.random() * 50) + 1,
     };
   });
@@ -82,9 +82,9 @@ const ROUNDS = [
     mode: "scatter",
     floorW: 3,
     floorH: 2,
-    scatterCols: 12,
-    scatterRows: 5,
-    cardW: 3.4,
+    scatterCols: 9,
+    scatterRows: 6,
+    cardW: 4.6,
     handleMs: 560,
     flipBack: 900,
     reshuffleAt: 14,
@@ -104,9 +104,9 @@ const ROUNDS = [
     mode: "scatter",
     floorW: 3,
     floorH: 2,
-    scatterCols: 12,
-    scatterRows: 5,
-    cardW: 3.4,
+    scatterCols: 9,
+    scatterRows: 6,
+    cardW: 4.6,
     handleMs: 220,
     headline: "Everything face up. Still spread across six aisles.",
     during: "You can read every card now. You still have to walk to it.",
@@ -669,7 +669,7 @@ export default function FiveSCardGame() {
   const styles = `
     .aci-root{background:${INK};color:${BONE};font-family:${MONO};min-height:100%;padding:14px;position:relative;overflow:hidden}
     .aci-root:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;
-      background:repeating-linear-gradient(to bottom,rgba(0,0,0,.22) 0,rgba(0,0,0,.22) 1px,transparent 1px,transparent 3px)}
+      background:repeating-linear-gradient(to bottom,rgba(0,0,0,.14) 0,rgba(0,0,0,.14) 1px,transparent 1px,transparent 3px)}
     .wrap{max-width:960px;margin:0 auto;position:relative;z-index:1}
     .bar{display:flex;align-items:center;gap:10px;border-bottom:3px solid ${RED};padding-bottom:10px;margin-bottom:16px}
     .brand{font-family:${HEAVY};font-size:13px;letter-spacing:.14em;line-height:1.15}
@@ -709,12 +709,12 @@ export default function FiveSCardGame() {
     .zone-tag{position:absolute;top:-3px;left:-3px;font-size:10px;letter-spacing:.18em;padding:4px 9px;color:${INK};font-weight:700}
     .zone-grid{display:grid;gap:4px;height:100%;align-content:start}
 
-    .card{aspect-ratio:2/2.9;background:${BONE};border:2px solid ${INK};border-radius:2px;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;cursor:pointer;padding:0;font-family:${MONO};line-height:1;transition:filter .08s}
+    .card{aspect-ratio:2/2.9;background:${BONE};border:3px solid ${INK};border-radius:3px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:1px;cursor:pointer;padding:0;font-family:${MONO};line-height:1;transition:filter .08s}
     .card:focus-visible{outline:3px solid ${AMBER};outline-offset:2px}
-    .card-rank{font-size:clamp(8px,1.4vw,13px);font-weight:700}
-    .card-suit{font-size:clamp(9px,1.6vw,15px)}
-    .card-joker{font-size:14px}
+    .card-rank{font-size:clamp(13px,3vw,22px);font-weight:800;line-height:1}
+    .card-suit{font-size:clamp(15px,3.6vw,26px);line-height:1}
+    .card-joker{font-size:20px}
     .card-abs{position:absolute;box-shadow:3px 3px 0 rgba(0,0,0,.6)}
     .card-abs:hover:not(:disabled){filter:brightness(1.15)}
     .card-back{background:#7A4A2B;border-color:${INK}}
